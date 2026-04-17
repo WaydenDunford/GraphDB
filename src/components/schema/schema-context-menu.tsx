@@ -1,5 +1,3 @@
-"use client";
-
 import { Copy, Group, Layers, Scissors, ClipboardPaste } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { Group } from "lucide-react";
 import { NodeResizer, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";

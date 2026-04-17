@@ -89,12 +89,17 @@ body {
   height: 100%;
 }
 
+html.dark {
+  color-scheme: dark;
+  background: #070707;
+}
+
 body {
   margin: 0;
   overflow: hidden;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans-stack), ui-sans-serif, system-ui, sans-serif;
 }
 
 button,
@@ -123,15 +128,25 @@ textarea {
 }
 
 .workspace-grid {
+  background-color: #070707;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
+.schema-canvas-shell,
+.schema-export-surface,
+.schema-canvas-shell .react-flow,
+.schema-canvas-shell .react-flow__renderer,
+.schema-canvas-shell .react-flow__pane,
+.schema-canvas-shell .react-flow__viewport {
+  background: #070707;
+}
+
 .canvas-vignette {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0)),
     linear-gradient(
       90deg,
       rgba(52, 211, 153, 0.025),

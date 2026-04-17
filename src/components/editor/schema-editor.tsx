@@ -1,19 +1,17 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import type { BeforeMount, OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useSchemaStore } from "@/lib/store/schema-store";
 
-const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
-  ssr: false,
-  loading: () => (
+const MonacoEditor = lazy(() => import("@monaco-editor/react"));
+
+function EditorFallback() {
+  return (
     <div className="text-muted-foreground flex h-full items-center justify-center bg-[#0d0d0c] text-sm">
       Loading editor...
     </div>
-  )
-});
+  );
+}
 
 function languageForFormat(format: string) {
   return format === "dbml" ? "dbml" : "sql";
@@ -185,32 +183,34 @@ export function SchemaEditor() {
 
   return (
     <div className="border-border h-full min-h-0 overflow-hidden border-y">
-      <MonacoEditor
-        value={code}
-        language={languageForFormat(format)}
-        theme="graphdb-dark"
-        beforeMount={beforeMount}
-        onMount={onMount}
-        onChange={(value) => setCode(value ?? "")}
-        options={{
-          minimap: { enabled: false },
-          fontSize: 13,
-          fontFamily:
-            "var(--font-mono-stack), Menlo, Monaco, Consolas, monospace",
-          lineHeight: 22,
-          padding: { top: 16, bottom: 16 },
-          scrollBeyondLastLine: false,
-          smoothScrolling: true,
-          cursorBlinking: "smooth",
-          cursorSmoothCaretAnimation: "on",
-          wordWrap: "on",
-          automaticLayout: true,
-          bracketPairColorization: { enabled: true },
-          guides: { indentation: true },
-          renderLineHighlight: "all",
-          overviewRulerBorder: false
-        }}
-      />
+      <Suspense fallback={<EditorFallback />}>
+        <MonacoEditor
+          value={code}
+          language={languageForFormat(format)}
+          theme="graphdb-dark"
+          beforeMount={beforeMount}
+          onMount={onMount}
+          onChange={(value) => setCode(value ?? "")}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 13,
+            fontFamily:
+              "var(--font-mono-stack), Menlo, Monaco, Consolas, monospace",
+            lineHeight: 22,
+            padding: { top: 16, bottom: 16 },
+            scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: "smooth",
+            cursorSmoothCaretAnimation: "on",
+            wordWrap: "on",
+            automaticLayout: true,
+            bracketPairColorization: { enabled: true },
+            guides: { indentation: true },
+            renderLineHighlight: "all",
+            overviewRulerBorder: false
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

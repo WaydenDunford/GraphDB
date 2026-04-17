@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState, type ComponentType } from "react";
 import {
   AlertTriangle,
@@ -170,14 +168,14 @@ export function TopNav() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="border-border bg-background/92 flex h-14 shrink-0 items-center justify-between border-b px-3 shadow-[0_1px_0_rgba(255,255,255,0.03)] backdrop-blur md:px-4">
+      <header className="border-border flex h-14 shrink-0 items-center justify-between border-b bg-[#070707]/95 px-3 text-[#f2f2ee] shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur md:px-4">
         <div className="flex min-w-0 items-center gap-3 md:gap-5">
           <div className="flex items-center gap-2">
             <div className="border-primary/30 bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md border shadow-[0_0_28px_rgba(52,211,153,0.24)]">
               <DatabaseZap className="size-4" />
             </div>
             <div className="hidden leading-tight sm:block">
-              <div className="text-sm font-semibold tracking-tight">
+              <div className="text-sm font-semibold tracking-tight text-white">
                 GraphDB Studio
               </div>
               <div className="text-muted-foreground text-[10px] tracking-[0.18em] uppercase">
@@ -208,7 +206,7 @@ export function TopNav() {
                 />
               ) : (
                 <button
-                  className="hover:text-primary min-w-0 truncate text-left text-sm font-medium transition-colors"
+                  className="hover:text-primary min-w-0 truncate text-left text-sm font-medium text-white transition-colors"
                   onClick={beginNameEdit}
                   title="Rename scheme"
                 >
@@ -345,19 +343,28 @@ export function TopNav() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="icon"
                 onClick={toggleTheme}
-                aria-label="Toggle theme"
+                aria-label={
+                  theme === "dark"
+                    ? "Switch to light theme"
+                    : "Switch to dark theme"
+                }
+                className="bg-[#121211] text-white hover:bg-[#1c1c1a]"
               >
                 {theme === "dark" ? (
-                  <Moon className="size-4" />
-                ) : (
                   <Sun className="size-4" />
+                ) : (
+                  <Moon className="size-4" />
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Toggle theme</TooltipContent>
+            <TooltipContent>
+              {theme === "dark"
+                ? "Switch to light theme"
+                : "Switch to dark theme"}
+            </TooltipContent>
           </Tooltip>
 
           <div className="border-border bg-secondary text-muted-foreground hidden items-center gap-2 rounded-md border px-2 py-1 text-xs lg:flex">

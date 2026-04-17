@@ -1,18 +1,32 @@
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTypescript from "eslint-config-next/typescript";
+import js from "@eslint/js";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
-const eslintConfig = [
-  ...nextVitals,
-  ...nextTypescript,
+export default tseslint.config(
   {
     ignores: [
-      ".next/**",
       "node_modules/**",
-      "out/**",
       "dist/**",
       "google ai studio GraphDB app/**"
     ]
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.{js,mjs,ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    },
+    plugins: {
+      "react-hooks": reactHooks
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules
+    }
   }
-];
-
-export default eslintConfig;
+);

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   useCallback,
   useEffect,
@@ -579,9 +577,12 @@ function SchemaCanvasInner() {
   };
 
   return (
-    <div className="bg-background relative h-full min-h-0 flex-1 overflow-hidden">
+    <div className="schema-canvas-shell relative h-full min-h-0 flex-1 overflow-hidden bg-[#070707] text-[#f2f2ee]">
       <div className="canvas-vignette pointer-events-none absolute inset-0 z-0" />
-      <div ref={exportSurfaceRef} className="schema-export-surface h-full">
+      <div
+        ref={exportSurfaceRef}
+        className="schema-export-surface h-full bg-[#070707]"
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -614,7 +615,7 @@ function SchemaCanvasInner() {
           selectionKeyCode="Shift"
           multiSelectionKeyCode={["Meta", "Control", "Shift"]}
           proOptions={{ hideAttribution: true }}
-          className="workspace-grid"
+          className="workspace-grid bg-[#070707]"
         >
           <Background gap={28} size={1} color="rgba(255,255,255,0.03)" />
           <Controls position="bottom-right" showInteractive={false} />

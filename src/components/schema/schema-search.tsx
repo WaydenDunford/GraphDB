@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { Focus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

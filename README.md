@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open the Vite URL printed by the dev server, usually `http://127.0.0.1:5173`.
 
 ## Production Commands
 
@@ -30,7 +30,7 @@ npm run format
 
 ## What Is Included
 
-- Next.js App Router with TypeScript
+- React with Vite and TypeScript
 - Tailwind CSS v4 design tokens
 - shadcn/ui-style local components powered by Radix primitives
 - Monaco Editor with SQL and custom DBML syntax highlighting
@@ -52,8 +52,14 @@ npm run format
 ## Architecture
 
 ```text
-src/app
-  App Router entry, layout, global CSS, metadata
+src/main.tsx
+  Browser entry point and React root mounting
+
+src/App.tsx
+  Application shell, providers, and toast outlet
+
+src/styles
+  Global CSS, Tailwind CSS v4 tokens, and React Flow styles
 
 src/components/dashboard
   Top navigation, responsive split workspace, left editor/AI panel

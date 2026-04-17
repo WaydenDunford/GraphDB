@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useRef } from "react";
 import { useReactFlow, useStore, useViewport } from "@xyflow/react";
 import { cn } from "@/lib/utils";

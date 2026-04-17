@@ -34,7 +34,7 @@ function readDbmlIdentifier(value: string) {
 }
 
 function parseEndpoint(value: string) {
-  const cleaned = value.trim().replace(/[\[\]]/g, "");
+  const cleaned = value.trim().replaceAll("[", "").replaceAll("]", "");
   const parts = cleaned.split(".");
 
   if (parts.length < 2) {
@@ -53,7 +53,7 @@ function stripDbmlComment(line: string) {
 
 function parseColumnLine(line: string) {
   const match = line.match(
-    /^("[^"]+"|`[^`]+`|'[^']+'|[\w-]+)\s+([^\s\[]+)(.*)$/
+    /^("[^"]+"|`[^`]+`|'[^']+'|[\w-]+)\s+([^\s[]+)(.*)$/
   );
 
   if (!match) {

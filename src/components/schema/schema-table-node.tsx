@@ -1,5 +1,3 @@
-"use client";
-
 import { Database, KeyRound, Link2 } from "lucide-react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";

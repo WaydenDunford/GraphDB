@@ -1,5 +1,3 @@
-"use client";
-
 import { LeftWorkspacePanel } from "@/components/dashboard/left-workspace-panel";
 import { SchemePersistenceController } from "@/components/dashboard/scheme-persistence-controller";
 import { TopNav } from "@/components/dashboard/top-nav";

@@ -1,10 +1,9 @@
-"use client";
-
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode
@@ -20,27 +19,47 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function getInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "dark";
+  }
+
+  return window.localStorage.getItem("graphdb-theme") === "light"
+    ? "light"
+    : "dark";
+}
+
+function applyThemeClass(theme: ThemeMode) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.dataset.theme = theme;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>("dark");
+  const [theme, setThemeState] = useState<ThemeMode>(getInitialTheme);
 
   const setTheme = useCallback((nextTheme: ThemeMode) => {
     setThemeState(nextTheme);
-    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    applyThemeClass(nextTheme);
     window.localStorage.setItem("graphdb-theme", nextTheme);
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+  useLayoutEffect(() => {
+    applyThemeClass(theme);
   }, [theme]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      if (window.localStorage.getItem("graphdb-theme") === "light") {
-        setTheme("light");
-      }
-    }, 0);
+    window.localStorage.setItem("graphdb-theme", theme);
+  }, [theme]);
 
-    return () => window.clearTimeout(timeout);
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "graphdb-theme") {
+        setThemeState(event.newValue === "light" ? "light" : "dark");
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, [setTheme]);
 
   const value = useMemo<ThemeContextValue>(

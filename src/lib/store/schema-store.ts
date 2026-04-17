@@ -1,5 +1,3 @@
-"use client";
-
 import { create } from "zustand";
 import { mockAiProvider } from "@/lib/ai";
 import { findElementForLine, parseSchema } from "@/lib/parser";
