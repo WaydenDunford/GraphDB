@@ -1,17 +1,26 @@
 import { useState } from "react";
+import { ApiExplorer } from "@/components/dashboard/api-explorer";
 import { LeftWorkspacePanel } from "@/components/dashboard/left-workspace-panel";
 import { SchemePersistenceController } from "@/components/dashboard/scheme-persistence-controller";
-import { TopNav } from "@/components/dashboard/top-nav";
+import { TopNav, type WorkbenchView } from "@/components/dashboard/top-nav";
 import { SchemaCanvas } from "@/components/schema/schema-canvas";
 import { cn } from "@/lib/utils";
 
 export function SchemaWorkbench() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState<WorkbenchView>("playground");
+
+  const handleViewChange = (view: WorkbenchView) => {
+    setActiveView(view);
+    if (view === "api") {
+      setIsSidebarCollapsed(false);
+    }
+  };
 
   return (
     <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden">
       <SchemePersistenceController />
-      <TopNav />
+      <TopNav activeView={activeView} onViewChange={handleViewChange} />
       <main
         className={cn(
           "grid min-h-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-300",
@@ -22,13 +31,21 @@ export function SchemaWorkbench() {
       >
         {isSidebarCollapsed ? null : (
           <LeftWorkspacePanel
-            onCollapseSidebar={() => setIsSidebarCollapsed(true)}
+            onCollapseSidebar={
+              activeView === "playground"
+                ? () => setIsSidebarCollapsed(true)
+                : undefined
+            }
           />
         )}
-        <SchemaCanvas
-          isSidebarCollapsed={isSidebarCollapsed}
-          onRestoreSidebar={() => setIsSidebarCollapsed(false)}
-        />
+        {activeView === "api" ? (
+          <ApiExplorer />
+        ) : (
+          <SchemaCanvas
+            isSidebarCollapsed={isSidebarCollapsed}
+            onRestoreSidebar={() => setIsSidebarCollapsed(false)}
+          />
+        )}
       </main>
     </div>
   );

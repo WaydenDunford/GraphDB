@@ -54,6 +54,7 @@ import {
 import { exportSource, type ExportKind } from "@/lib/export/schema-export";
 import { formatLabels, samplePresets } from "@/lib/samples";
 import { useSchemaStore } from "@/lib/store/schema-store";
+import { cn } from "@/lib/utils";
 import type { SchemaFormat, SchemaPreset } from "@/types/schema";
 
 const exportItems: Array<{
@@ -66,6 +67,13 @@ const exportItems: Array<{
   { kind: "png", label: "PNG image", icon: Download },
   { kind: "pdf", label: "PDF document", icon: Download }
 ];
+
+export type WorkbenchView = "playground" | "api";
+
+interface TopNavProps {
+  activeView: WorkbenchView;
+  onViewChange: (view: WorkbenchView) => void;
+}
 
 function saveStatusCopy(status: string) {
   if (status === "saving") {
@@ -80,7 +88,7 @@ function saveStatusCopy(status: string) {
   return "saved";
 }
 
-export function TopNav() {
+export function TopNav({ activeView, onViewChange }: TopNavProps) {
   const { theme, toggleTheme } = useGraphTheme();
   const [isEditingName, setIsEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -372,6 +380,30 @@ export function TopNav() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <div className="border-border bg-secondary hidden h-9 items-center rounded-md border p-1 md:flex">
+            {(["playground", "api"] as WorkbenchView[]).map((view) => (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={activeView === view}
+                onClick={() => onViewChange(view)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded px-3 text-xs font-medium transition-colors",
+                  activeView === view
+                    ? "bg-background text-foreground shadow-sm dark:bg-white dark:text-black"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {view === "playground" ? (
+                  <DatabaseZap className="size-3.5" />
+                ) : (
+                  <Braces className="size-3.5" />
+                )}
+                <span>{view === "api" ? "API" : "Playground"}</span>
+              </button>
+            ))}
+          </div>
 
           <Tooltip>
             <TooltipTrigger asChild>
