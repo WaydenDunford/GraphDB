@@ -102,6 +102,28 @@ function markDirty(state: SchemaStore): Partial<SchemaStore> {
   return state.saveStatus === "dirty" ? {} : { saveStatus: "dirty" };
 }
 
+function shouldResetDefaultLayout(schema: ParsedSchema) {
+  return schema.relationships.length === 0 || schema.tables.length > 10;
+}
+
+function tableSignature(schema: ParsedSchema) {
+  return schema.tables
+    .map((table) => table.id)
+    .sort()
+    .join("|");
+}
+
+function filterNodePositions(
+  positions: Record<string, CanvasPoint>,
+  schema: ParsedSchema
+) {
+  const tableIds = new Set(schema.tables.map((table) => table.id));
+
+  return Object.fromEntries(
+    Object.entries(positions).filter(([tableId]) => tableIds.has(tableId))
+  );
+}
+
 function toPersistedScheme(
   state: SchemaStore,
   updatedAt = Date.now()
@@ -134,7 +156,9 @@ function applyScheme(scheme: PersistedScheme) {
     format: scheme.format,
     schema: result.schema,
     errors: result.errors,
-    nodePositions: scheme.nodePositions ?? {},
+    nodePositions: shouldResetDefaultLayout(result.schema)
+      ? {}
+      : filterNodePositions(scheme.nodePositions ?? {}, result.schema),
     groups: scheme.groups ?? [],
     hoveredElement: null,
     selectedElement: null,
@@ -318,10 +342,16 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     }
 
     const result = parse(code, state.format);
+    const tableSetChanged =
+      tableSignature(state.schema) !== tableSignature(result.schema);
     set({
       code,
       schema: result.schema,
       errors: result.errors,
+      nodePositions:
+        tableSetChanged || shouldResetDefaultLayout(result.schema)
+          ? {}
+          : filterNodePositions(state.nodePositions, result.schema),
       selectedTableIds: state.selectedTableIds.filter((tableId) =>
         result.schema.tables.some((table) => table.id === tableId)
       ),
@@ -347,6 +377,9 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       format,
       schema: result.schema,
       errors: result.errors,
+      nodePositions: shouldResetDefaultLayout(result.schema)
+        ? {}
+        : filterNodePositions(state.nodePositions, result.schema),
       hoveredElement: null,
       selectedElement: null,
       selectedTableIds: [],

@@ -9,6 +9,10 @@ const nodeWidth = 280;
 const rowHeight = 32;
 const headerHeight = 48;
 const nodePadding = 12;
+const maxGridColumns = 5;
+const gridColumnGap = 136;
+const gridRowGap = 128;
+const collisionPadding = 48;
 
 export function tableNodeHeight(columnCount: number) {
   return headerHeight + nodePadding + columnCount * rowHeight;
@@ -18,20 +22,51 @@ export function tableNodeWidth() {
   return nodeWidth;
 }
 
-export function buildFlowElements(
-  schema: ParsedSchema,
-  positions: Record<string, CanvasPoint> = {},
-  groups: SchemaGroup[] = []
-): {
-  nodes: SchemaCanvasNode[];
-  edges: SchemaFlowEdge[];
-} {
+function shouldUseGridLayout(schema: ParsedSchema) {
+  return schema.relationships.length === 0 || schema.tables.length > 10;
+}
+
+function buildGridPositions(schema: ParsedSchema) {
+  const positions: Record<string, CanvasPoint> = {};
+  const rowHeights: number[] = [];
+
+  schema.tables.forEach((table, index) => {
+    const row = Math.floor(index / maxGridColumns);
+    rowHeights[row] = Math.max(
+      rowHeights[row] ?? 0,
+      tableNodeHeight(table.columns.length)
+    );
+  });
+
+  const rowOffsets = rowHeights.reduce<number[]>((offsets, height, index) => {
+    offsets[index] =
+      index === 0
+        ? 0
+        : offsets[index - 1]! + rowHeights[index - 1]! + gridRowGap;
+    return offsets;
+  }, []);
+
+  schema.tables.forEach((table, index) => {
+    const column = index % maxGridColumns;
+    const row = Math.floor(index / maxGridColumns);
+
+    positions[table.id] = {
+      x: column * (nodeWidth + gridColumnGap),
+      y: rowOffsets[row] ?? 0
+    };
+  });
+
+  return positions;
+}
+
+function buildDagrePositions(schema: ParsedSchema) {
+  const positions: Record<string, CanvasPoint> = {};
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
   graph.setGraph({
     rankdir: "LR",
-    nodesep: 56,
-    ranksep: 116,
+    nodesep: 72,
+    ranksep: 136,
     marginx: 52,
     marginy: 52
   });
@@ -49,13 +84,78 @@ export function buildFlowElements(
 
   dagre.layout(graph);
 
-  const tableNodes: SchemaCanvasNode[] = schema.tables.map((table) => {
+  for (const table of schema.tables) {
     const node = graph.node(table.id);
     const height = tableNodeHeight(table.columns.length);
-    const fallbackPosition = {
+
+    positions[table.id] = {
       x: (node?.x ?? 0) - nodeWidth / 2,
       y: (node?.y ?? 0) - height / 2
     };
+  }
+
+  return positions;
+}
+
+function nodeBottom(node: SchemaCanvasNode) {
+  return node.position.y + Number(node.height ?? 0);
+}
+
+function nodesOverlap(a: SchemaCanvasNode, b: SchemaCanvasNode) {
+  const aWidth = Number(a.width ?? nodeWidth);
+  const bWidth = Number(b.width ?? nodeWidth);
+  const aHeight = Number(a.height ?? 0);
+  const bHeight = Number(b.height ?? 0);
+
+  return !(
+    a.position.x + aWidth + collisionPadding <= b.position.x ||
+    b.position.x + bWidth + collisionPadding <= a.position.x ||
+    a.position.y + aHeight + collisionPadding <= b.position.y ||
+    b.position.y + bHeight + collisionPadding <= a.position.y
+  );
+}
+
+function preventTableOverlaps(tableNodes: SchemaCanvasNode[]) {
+  const placed: SchemaCanvasNode[] = [];
+  const adjusted = [...tableNodes]
+    .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
+    .map((node) => ({
+      ...node,
+      position: { ...node.position }
+    }));
+
+  for (const node of adjusted) {
+    let guard = 0;
+    let overlap = placed.find((placedNode) => nodesOverlap(node, placedNode));
+
+    while (overlap && guard < placed.length + 1) {
+      node.position.y = nodeBottom(overlap) + gridRowGap;
+      overlap = placed.find((placedNode) => nodesOverlap(node, placedNode));
+      guard += 1;
+    }
+
+    placed.push(node);
+  }
+
+  const byId = new Map(adjusted.map((node) => [node.id, node]));
+  return tableNodes.map((node) => byId.get(node.id) ?? node);
+}
+
+export function buildFlowElements(
+  schema: ParsedSchema,
+  positions: Record<string, CanvasPoint> = {},
+  groups: SchemaGroup[] = []
+): {
+  nodes: SchemaCanvasNode[];
+  edges: SchemaFlowEdge[];
+} {
+  const defaultPositions = shouldUseGridLayout(schema)
+    ? buildGridPositions(schema)
+    : buildDagrePositions(schema);
+
+  const tableNodes: SchemaCanvasNode[] = schema.tables.map((table) => {
+    const height = tableNodeHeight(table.columns.length);
+    const fallbackPosition = defaultPositions[table.id] ?? { x: 0, y: 0 };
 
     return {
       id: table.id,
@@ -73,6 +173,7 @@ export function buildFlowElements(
       zIndex: 10
     };
   });
+  const resolvedTableNodes = preventTableOverlaps(tableNodes);
 
   const groupNodes: SchemaCanvasNode[] = groups.map((group) => ({
     id: group.id,
@@ -108,5 +209,5 @@ export function buildFlowElements(
     }
   }));
 
-  return { nodes: [...groupNodes, ...tableNodes], edges };
+  return { nodes: [...groupNodes, ...resolvedTableNodes], edges };
 }

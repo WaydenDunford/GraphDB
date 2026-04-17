@@ -55,6 +55,8 @@
   --border-strong: #c6c6c1;
   --input: #ffffff;
   --ring: rgba(4, 120, 87, 0.28);
+  --canvas-background: #f7f7f5;
+  --canvas-grid-line: rgba(23, 23, 22, 0.14);
 }
 
 .dark {
@@ -78,6 +80,8 @@
   --border-strong: #34342f;
   --input: #121211;
   --ring: rgba(52, 211, 153, 0.32);
+  --canvas-background: #070707;
+  --canvas-grid-line: rgba(255, 255, 255, 0.095);
 }
 
 * {
@@ -91,7 +95,12 @@ body {
 
 html.dark {
   color-scheme: dark;
-  background: #070707;
+  background: var(--background);
+}
+
+html:not(.dark) {
+  color-scheme: light;
+  background: var(--background);
 }
 
 body {
@@ -106,6 +115,24 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="switch"]:not([aria-disabled="true"]),
+input[type="button"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="submit"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+[role="switch"][aria-disabled="true"],
+input:disabled {
+  cursor: not-allowed;
 }
 
 ::selection {
@@ -128,10 +155,18 @@ textarea {
 }
 
 .workspace-grid {
-  background-color: #070707;
+  background-color: var(--canvas-background);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(var(--canvas-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--canvas-grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.workspace-grid .react-flow__pane {
+  background-color: var(--canvas-background);
+  background-image:
+    linear-gradient(var(--canvas-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--canvas-grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
@@ -139,20 +174,49 @@ textarea {
 .schema-export-surface,
 .schema-canvas-shell .react-flow,
 .schema-canvas-shell .react-flow__renderer,
-.schema-canvas-shell .react-flow__pane,
-.schema-canvas-shell .react-flow__viewport {
-  background: #070707;
+.schema-canvas-shell .react-flow__pane {
+  background-color: var(--canvas-background);
 }
 
-.canvas-vignette {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0)),
-    linear-gradient(
-      90deg,
-      rgba(52, 211, 153, 0.025),
-      transparent 38%,
-      rgba(34, 211, 238, 0.025)
-    );
+.schema-canvas-shell .react-flow__viewport {
+  background: transparent;
+}
+
+.import-loader-grid {
+  background-image:
+    linear-gradient(rgba(52, 211, 153, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 211, 153, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.import-loader-scan {
+  animation: import-loader-scan 1.6s ease-in-out infinite;
+  background: linear-gradient(
+    180deg,
+    rgba(52, 211, 153, 0),
+    rgba(52, 211, 153, 0.18),
+    rgba(34, 211, 238, 0)
+  );
+}
+
+.import-loader-orbit {
+  animation: import-loader-orbit 1.2s linear infinite;
+}
+
+@keyframes import-loader-scan {
+  0% {
+    transform: translateY(-120%);
+  }
+
+  100% {
+    transform: translateY(520%);
+  }
+}
+
+@keyframes import-loader-orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .monaco-hover-line {

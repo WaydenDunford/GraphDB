@@ -32,6 +32,12 @@ interface CreateTableStatement {
   statementEnd: number;
 }
 
+interface AlterTableStatement {
+  tableName: string;
+  content: string;
+  contentStart: number;
+}
+
 interface DefinitionChunk {
   text: string;
   start: number;
@@ -49,7 +55,7 @@ interface PendingReference {
 const constraintStarters =
   /^(constraint|primary|foreign|unique|check|exclude|key)\b/i;
 const columnTypeBoundary =
-  /\s(primary\s+key|not\s+null|null|references|default|unique|check|constraint|collate|generated|identity|encoding|comment|compress|distkey|sortkey)\b/i;
+  /\s(primary\s+key|not\s+null|null|references|default|unique|check|constraint|character\s+set|charset|collate|generated|identity|encoding|comment|compress|distkey|sortkey)\b/i;
 
 function readQuotedOrBareIdentifier(source: string, start: number) {
   let cursor = start;
@@ -197,6 +203,72 @@ function findCreateTableStatements(source: string): CreateTableStatement[] {
   return statements;
 }
 
+function findStatementEnd(source: string, start: number) {
+  let depth = 0;
+  let quote: string | null = null;
+
+  for (let cursor = start; cursor < source.length; cursor += 1) {
+    const char = source[cursor]!;
+    const previous = source[cursor - 1];
+
+    if (quote) {
+      if (char === quote && previous !== "\\") {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      continue;
+    }
+
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      depth = Math.max(depth - 1, 0);
+      continue;
+    }
+
+    if (char === ";" && depth === 0) {
+      return cursor;
+    }
+  }
+
+  return source.length;
+}
+
+function findAlterTableStatements(source: string): AlterTableStatement[] {
+  const statements: AlterTableStatement[] = [];
+  const alterRegex = /alter\s+table\s+/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = alterRegex.exec(source))) {
+    const tableStart = match.index + match[0].length;
+    const { value: tableName, end: tableNameEnd } = readQuotedOrBareIdentifier(
+      source,
+      tableStart
+    );
+
+    if (!tableName) {
+      continue;
+    }
+
+    const statementEnd = findStatementEnd(source, tableNameEnd);
+    statements.push({
+      tableName,
+      content: source.slice(tableNameEnd, statementEnd),
+      contentStart: tableNameEnd
+    });
+    alterRegex.lastIndex = statementEnd + 1;
+  }
+
+  return statements;
+}
+
 function splitDefinitions(content: string, offset: number): DefinitionChunk[] {
   const chunks: DefinitionChunk[] = [];
   let depth = 0;
@@ -255,6 +327,11 @@ function splitIdentifierList(value: string) {
       stripIdentifierQuotes(item.trim().replace(/^(asc|desc)\s+/i, ""))
     )
     .filter(Boolean);
+}
+
+function findTable(schema: ParsedSchema, tableName: string) {
+  const resolvedName = resolveTableName(schema.tables, tableName);
+  return schema.tables.find((table) => table.name === resolvedName);
 }
 
 function parseColumnDefinition(
@@ -343,6 +420,31 @@ function applyPrimaryKeyConstraint(table: SchemaTable, chunk: DefinitionChunk) {
   }
 }
 
+function applyAlterPrimaryKeyConstraint(
+  schema: ParsedSchema,
+  tableName: string,
+  chunk: DefinitionChunk
+) {
+  const match = chunk.text.trim().match(/^add\s+primary\s+key\s*\(([^)]+)\)/i);
+
+  if (!match) {
+    return;
+  }
+
+  const table = findTable(schema, tableName);
+  if (!table) {
+    return;
+  }
+
+  for (const columnName of splitIdentifierList(match[1])) {
+    const column = findColumn(table, columnName);
+    if (column) {
+      column.isPrimaryKey = true;
+      column.nullable = false;
+    }
+  }
+}
+
 function parseForeignKeyConstraint(
   tableName: string,
   chunk: DefinitionChunk,
@@ -351,7 +453,7 @@ function parseForeignKeyConstraint(
   const match = chunk.text
     .trim()
     .match(
-      /^(?:constraint\s+("[^"]+"|`[^`]+`|[\w-]+)\s+)?foreign\s+key\s*\(([^)]+)\)\s+references\s+((?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[\w-]+)(?:\.(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[\w-]+))?)\s*\(([^)]+)\)/i
+      /^(?:add\s+)?(?:constraint\s+("[^"]+"|`[^`]+`|[\w-]+)\s+)?foreign\s+key\s*\(([^)]+)\)\s+references\s+((?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[\w-]+)(?:\.(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|[\w-]+))?)\s*\(([^)]+)\)/i
     );
 
   if (!match) {
@@ -464,6 +566,17 @@ export function parseSql(source: string, format: SchemaFormat): ParseResult {
         continue;
       }
 
+      pendingReferences.push(
+        ...parseForeignKeyConstraint(statement.tableName, chunk, source)
+      );
+    }
+  }
+
+  for (const statement of findAlterTableStatements(source)) {
+    const chunks = splitDefinitions(statement.content, statement.contentStart);
+
+    for (const chunk of chunks) {
+      applyAlterPrimaryKeyConstraint(schema, statement.tableName, chunk);
       pendingReferences.push(
         ...parseForeignKeyConstraint(statement.tableName, chunk, source)
       );

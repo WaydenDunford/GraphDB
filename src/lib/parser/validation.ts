@@ -9,6 +9,8 @@ import type {
 const commonTypes = new Set([
   "bigint",
   "bigserial",
+  "binary",
+  "bit",
   "blob",
   "bool",
   "boolean",
@@ -23,6 +25,7 @@ const commonTypes = new Set([
   "decimal",
   "double",
   "double precision",
+  "enum",
   "float",
   "float4",
   "float8",
@@ -34,13 +37,19 @@ const commonTypes = new Set([
   "integer",
   "json",
   "jsonb",
+  "longblob",
+  "longtext",
   "macaddr",
+  "mediumblob",
+  "mediumint",
+  "mediumtext",
   "money",
   "nchar",
   "numeric",
   "nvarchar",
   "real",
   "serial",
+  "set",
   "smallint",
   "smallserial",
   "string",
@@ -53,9 +62,13 @@ const commonTypes = new Set([
   "timestamp without time zone",
   "timestamptz",
   "timetz",
+  "tinyblob",
   "tinyint",
+  "tinytext",
   "uuid",
+  "varbinary",
   "varchar",
+  "year",
   "xml"
 ]);
 
@@ -196,6 +209,7 @@ function normalizeType(type: string) {
     .toLowerCase()
     .replace(/\[\]$/g, "")
     .replace(/\([^)]*\)/g, "")
+    .replace(/\b(unsigned|signed|zerofill)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }

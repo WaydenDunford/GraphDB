@@ -18,8 +18,9 @@ import {
   type NodeMouseHandler,
   type OnSelectionChangeFunc
 } from "@xyflow/react";
-import { AlertTriangle, Database, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronRight, Database, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { DatabaseMinimap } from "@/components/schema/database-minimap";
 import {
   SchemaContextMenu,
@@ -52,6 +53,11 @@ const nodeTypes = {
 const edgeTypes = {
   schemaRelationship: SchemaRelationshipEdge
 };
+
+interface SchemaCanvasProps {
+  isSidebarCollapsed?: boolean;
+  onRestoreSidebar?: () => void;
+}
 
 function isTableNode(node: SchemaCanvasNode) {
   return node.type === "schemaTable";
@@ -129,7 +135,10 @@ function boundsForTables(nodes: SchemaCanvasNode[], tableIds: string[]) {
   };
 }
 
-function SchemaCanvasInner() {
+function SchemaCanvasInner({
+  isSidebarCollapsed = false,
+  onRestoreSidebar
+}: SchemaCanvasProps) {
   const { fitView, setCenter, fitBounds } = useReactFlow();
   const schema = useSchemaStore((state) => state.schema);
   const schemeName = useSchemaStore((state) => state.schemeName);
@@ -269,6 +278,44 @@ function SchemaCanvasInner() {
 
     return () => window.clearTimeout(timeout);
   }, [fitView, schema.parsedAt]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void fitView({ padding: 0.22, duration: 360 });
+    }, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [fitView, isSidebarCollapsed]);
+
+  useEffect(() => {
+    const fullscreenFitDelays = [120, 360];
+    const timeouts: number[] = [];
+
+    const refitAfterFullscreenResize = () => {
+      while (timeouts.length > 0) {
+        window.clearTimeout(timeouts.pop());
+      }
+
+      for (const delay of fullscreenFitDelays) {
+        timeouts.push(
+          window.setTimeout(() => {
+            void fitView({ padding: 0.22, duration: 360 });
+          }, delay)
+        );
+      }
+    };
+
+    document.addEventListener("fullscreenchange", refitAfterFullscreenResize);
+    return () => {
+      document.removeEventListener(
+        "fullscreenchange",
+        refitAfterFullscreenResize
+      );
+      while (timeouts.length > 0) {
+        window.clearTimeout(timeouts.pop());
+      }
+    };
+  }, [fitView]);
 
   const focusTable = useCallback(
     (tableId: string, columnId?: string) => {
@@ -577,11 +624,10 @@ function SchemaCanvasInner() {
   };
 
   return (
-    <div className="schema-canvas-shell relative h-full min-h-0 flex-1 overflow-hidden bg-[#070707] text-[#f2f2ee]">
-      <div className="canvas-vignette pointer-events-none absolute inset-0 z-0" />
+    <div className="schema-canvas-shell bg-background text-foreground relative h-full min-h-0 flex-1 overflow-hidden dark:bg-[#070707] dark:text-[#f2f2ee]">
       <div
         ref={exportSurfaceRef}
-        className="schema-export-surface h-full bg-[#070707]"
+        className="schema-export-surface bg-background h-full dark:bg-[#070707]"
       >
         <ReactFlow
           nodes={nodes}
@@ -615,9 +661,9 @@ function SchemaCanvasInner() {
           selectionKeyCode="Shift"
           multiSelectionKeyCode={["Meta", "Control", "Shift"]}
           proOptions={{ hideAttribution: true }}
-          className="workspace-grid bg-[#070707]"
+          className="workspace-grid"
         >
-          <Background gap={28} size={1} color="rgba(255,255,255,0.03)" />
+          <Background gap={28} size={1.35} color="var(--canvas-grid-line)" />
           <Controls position="bottom-right" showInteractive={false} />
 
           <Panel
@@ -653,6 +699,18 @@ function SchemaCanvasInner() {
       </div>
 
       <DatabaseMinimap nodes={nodes} />
+
+      {isSidebarCollapsed && onRestoreSidebar ? (
+        <Button
+          type="button"
+          onClick={onRestoreSidebar}
+          className="border-primary/40 text-primary-foreground absolute top-1/2 left-3 z-30 h-10 -translate-y-1/2 gap-2 px-3 shadow-[0_18px_55px_rgba(52,211,153,0.28)] hover:translate-x-1"
+          aria-label="Open code sidebar"
+        >
+          <ChevronRight className="size-4" />
+          <span className="text-xs font-semibold">Open code</span>
+        </Button>
+      ) : null}
 
       <SchemaContextMenu
         state={contextMenu}
@@ -724,10 +782,10 @@ function SchemaCanvasInner() {
   );
 }
 
-export function SchemaCanvas() {
+export function SchemaCanvas(props: SchemaCanvasProps) {
   return (
     <ReactFlowProvider>
-      <SchemaCanvasInner />
+      <SchemaCanvasInner {...props} />
     </ReactFlowProvider>
   );
 }

@@ -1,13 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import type { BeforeMount, OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { useGraphTheme } from "@/components/providers/theme-provider";
 import { useSchemaStore } from "@/lib/store/schema-store";
 
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
 function EditorFallback() {
   return (
-    <div className="text-muted-foreground flex h-full items-center justify-center bg-[#0d0d0c] text-sm">
+    <div className="text-muted-foreground bg-background flex h-full items-center justify-center text-sm dark:bg-[#0d0d0c]">
       Loading editor...
     </div>
   );
@@ -18,6 +19,7 @@ function languageForFormat(format: string) {
 }
 
 export function SchemaEditor() {
+  const { theme } = useGraphTheme();
   const code = useSchemaStore((state) => state.code);
   const format = useSchemaStore((state) => state.format);
   const schema = useSchemaStore((state) => state.schema);
@@ -81,6 +83,27 @@ export function SchemaEditor() {
         "editorCursor.foreground": "#34d399",
         "editor.selectionBackground": "#34d39933",
         "editor.inactiveSelectionBackground": "#34d3991f"
+      }
+    });
+
+    monaco.editor.defineTheme("graphdb-light", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "keyword", foreground: "047857", fontStyle: "bold" },
+        { token: "type", foreground: "0f766e" },
+        { token: "comment", foreground: "77776f" },
+        { token: "string", foreground: "b45309" }
+      ],
+      colors: {
+        "editor.background": "#fbfbfa",
+        "editor.foreground": "#171716",
+        "editor.lineHighlightBackground": "#efefec",
+        "editorLineNumber.foreground": "#8a8a84",
+        "editorLineNumber.activeForeground": "#30302d",
+        "editorCursor.foreground": "#047857",
+        "editor.selectionBackground": "#04785724",
+        "editor.inactiveSelectionBackground": "#04785714"
       }
     });
   }, []);
@@ -187,7 +210,7 @@ export function SchemaEditor() {
         <MonacoEditor
           value={code}
           language={languageForFormat(format)}
-          theme="graphdb-dark"
+          theme={theme === "dark" ? "graphdb-dark" : "graphdb-light"}
           beforeMount={beforeMount}
           onMount={onMount}
           onChange={(value) => setCode(value ?? "")}

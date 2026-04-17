@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import {
   AlertTriangle,
   Braces,
@@ -11,6 +11,8 @@ import {
   FilePlus2,
   FolderOpen,
   Loader2,
+  Maximize2,
+  Minimize2,
   Moon,
   Pencil,
   Save,
@@ -84,6 +86,7 @@ export function TopNav() {
   const [draftName, setDraftName] = useState("");
   const [newSchemeOpen, setNewSchemeOpen] = useState(false);
   const [loadSchemesOpen, setLoadSchemesOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [newSchemeName, setNewSchemeName] = useState("");
   const [newSchemePresetId, setNewSchemePresetId] = useState(
     samplePresets[0].id
@@ -127,6 +130,36 @@ export function TopNav() {
     setIsEditingName(true);
   };
 
+  useEffect(() => {
+    const updateFullscreenState = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    updateFullscreenState();
+    document.addEventListener("fullscreenchange", updateFullscreenState);
+    return () =>
+      document.removeEventListener("fullscreenchange", updateFullscreenState);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenEnabled) {
+        toast.error("Fullscreen is not available in this browser.");
+        return;
+      }
+
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not toggle fullscreen."
+      );
+    }
+  };
+
   const handleExport = async (kind: ExportKind) => {
     if (kind === "png" || kind === "pdf") {
       window.dispatchEvent(
@@ -168,14 +201,14 @@ export function TopNav() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="border-border flex h-14 shrink-0 items-center justify-between border-b bg-[#070707]/95 px-3 text-[#f2f2ee] shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur md:px-4">
+      <header className="border-border bg-background/92 text-foreground flex h-14 shrink-0 items-center justify-between border-b px-3 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur md:px-4 dark:bg-[#070707]/95 dark:text-[#f2f2ee]">
         <div className="flex min-w-0 items-center gap-3 md:gap-5">
           <div className="flex items-center gap-2">
             <div className="border-primary/30 bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md border shadow-[0_0_28px_rgba(52,211,153,0.24)]">
               <DatabaseZap className="size-4" />
             </div>
             <div className="hidden leading-tight sm:block">
-              <div className="text-sm font-semibold tracking-tight text-white">
+              <div className="text-foreground text-sm font-semibold tracking-tight dark:text-white">
                 GraphDB Studio
               </div>
               <div className="text-muted-foreground text-[10px] tracking-[0.18em] uppercase">
@@ -206,7 +239,7 @@ export function TopNav() {
                 />
               ) : (
                 <button
-                  className="hover:text-primary min-w-0 truncate text-left text-sm font-medium text-white transition-colors"
+                  className="text-foreground hover:text-primary min-w-0 truncate text-left text-sm font-medium transition-colors dark:text-white"
                   onClick={beginNameEdit}
                   title="Rename scheme"
                 >
@@ -320,7 +353,7 @@ export function TopNav() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" className="h-9">
                 <Download className="size-4" />
                 <span className="hidden sm:inline">Export</span>
               </Button>
@@ -351,7 +384,7 @@ export function TopNav() {
                     ? "Switch to light theme"
                     : "Switch to dark theme"
                 }
-                className="bg-[#121211] text-white hover:bg-[#1c1c1a]"
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-[#121211] dark:text-white dark:hover:bg-[#1c1c1a]"
               >
                 {theme === "dark" ? (
                   <Sun className="size-4" />
@@ -367,7 +400,30 @@ export function TopNav() {
             </TooltipContent>
           </Tooltip>
 
-          <div className="border-border bg-secondary text-muted-foreground hidden items-center gap-2 rounded-md border px-2 py-1 text-xs lg:flex">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => void toggleFullscreen()}
+                aria-label={
+                  isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+                }
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-[#121211] dark:text-white dark:hover:bg-[#1c1c1a]"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="size-4" />
+                ) : (
+                  <Maximize2 className="size-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            </TooltipContent>
+          </Tooltip>
+
+          <div className="border-border bg-secondary text-muted-foreground hidden h-9 items-center gap-2 rounded-md border px-3 text-xs lg:flex">
             <Braces className="text-accent size-3.5" />
             Live parse
           </div>
