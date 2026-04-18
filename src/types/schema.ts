@@ -126,3 +126,10 @@ export interface PersistedScheme {
 }
 
 export type SaveStatus = "saved" | "saving" | "dirty" | "error";
+
+export interface PublishedApi {
+  id: string;
+  apiBasePath: string;
+  apiToken: string;
+  publishedAt: number;
+}

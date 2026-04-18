@@ -4,6 +4,7 @@ import {
   Braces,
   Check,
   Cloud,
+  Copy,
   DatabaseZap,
   Download,
   FileCode2,
@@ -15,6 +16,7 @@ import {
   Minimize2,
   Moon,
   Pencil,
+  Rocket,
   Save,
   Sun,
   Trash2
@@ -51,6 +53,12 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import {
+  getPublishStatus,
+  publishedApiFromStatus,
+  startPublish,
+  type PublishStatusResponse
+} from "@/lib/api/publish-client";
 import { exportSource, type ExportKind } from "@/lib/export/schema-export";
 import { formatLabels, samplePresets } from "@/lib/samples";
 import { useSchemaStore } from "@/lib/store/schema-store";
@@ -88,6 +96,10 @@ function saveStatusCopy(status: string) {
   return "saved";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export function TopNav({ activeView, onViewChange }: TopNavProps) {
   const { theme, toggleTheme } = useGraphTheme();
   const [isEditingName, setIsEditingName] = useState(false);
@@ -100,10 +112,15 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
     samplePresets[0].id
   );
   const [schemeSearch, setSchemeSearch] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishStatus, setPublishStatus] =
+    useState<PublishStatusResponse | null>(null);
   const code = useSchemaStore((state) => state.code);
   const format = useSchemaStore((state) => state.format);
   const schemeName = useSchemaStore((state) => state.schemeName);
   const schema = useSchemaStore((state) => state.schema);
+  const errors = useSchemaStore((state) => state.errors);
   const groups = useSchemaStore((state) => state.groups);
   const nodePositions = useSchemaStore((state) => state.nodePositions);
   const saveStatus = useSchemaStore((state) => state.saveStatus);
@@ -115,6 +132,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
   const loadScheme = useSchemaStore((state) => state.loadScheme);
   const deleteScheme = useSchemaStore((state) => state.deleteScheme);
   const saveCurrentScheme = useSchemaStore((state) => state.saveCurrentScheme);
+  const setPublishedApi = useSchemaStore((state) => state.setPublishedApi);
 
   const filteredSchemes = useMemo(() => {
     const query = schemeSearch.trim().toLowerCase();
@@ -185,6 +203,104 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
       groups
     });
     toast.success(result.message);
+  };
+
+  const pollPublishStatus = async (id: string) => {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      const status = await getPublishStatus(id);
+      setPublishStatus(status);
+
+      if (status.status === "succeeded") {
+        const publishedApi = publishedApiFromStatus(status);
+        if (publishedApi) {
+          setPublishedApi(publishedApi);
+        }
+        toast.success("Schema published.");
+        return;
+      }
+
+      if (status.status === "failed") {
+        throw new Error(status.error || status.message || "Publish failed.");
+      }
+
+      await sleep(1800);
+    }
+
+    throw new Error("Publish timed out while waiting for the backend.");
+  };
+
+  const handlePublish = async () => {
+    if (isPublishing) {
+      return;
+    }
+
+    if (errors.length > 0) {
+      toast.error("Fix parser errors before publishing.");
+      return;
+    }
+
+    if (schema.tables.length === 0) {
+      toast.error("Add at least one table before publishing.");
+      return;
+    }
+
+    setIsPublishing(true);
+    setPublishDialogOpen(true);
+    setPublishStatus({
+      id: "",
+      status: "queued",
+      progress: 0,
+      step: "queued",
+      message: "Starting publish.",
+      error: null,
+      apiBasePath: null,
+      apiToken: null
+    });
+
+    try {
+      const started = await startPublish({
+        schemeName,
+        format,
+        code,
+        schema
+      });
+
+      setPublishStatus((current) =>
+        current
+          ? {
+              ...current,
+              id: started.id,
+              status: started.status,
+              message: "Publish queued."
+            }
+          : current
+      );
+
+      await pollPublishStatus(started.id);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Publish failed.";
+      toast.error(message);
+      setPublishStatus((current) =>
+        current
+          ? {
+              ...current,
+              status: "failed",
+              progress: 100,
+              step: "failed",
+              message: "Publish failed.",
+              error: message
+            }
+          : current
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const copyPublishedValue = async (value: string, label: string) => {
+    await navigator.clipboard?.writeText(value);
+    toast.success(`${label} copied.`);
   };
 
   const handleCreateScheme = async () => {
@@ -380,6 +496,22 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Button
+            size="sm"
+            className="h-9"
+            onClick={() => void handlePublish()}
+            disabled={isPublishing}
+          >
+            {isPublishing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Rocket className="size-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isPublishing ? "Publishing" : "Publish"}
+            </span>
+          </Button>
 
           <div className="border-border bg-secondary hidden h-9 items-center rounded-md border p-1 md:flex">
             {(["playground", "api"] as WorkbenchView[]).map((view) => (
@@ -583,6 +715,107 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish schema</DialogTitle>
+            <DialogDescription>
+              Provisioning an isolated database and generated API.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border-border bg-secondary/45 rounded-md border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">
+                    {publishStatus?.message ?? "Waiting for backend."}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    {publishStatus?.step ?? "queued"}
+                  </div>
+                </div>
+                {publishStatus?.status === "succeeded" ? (
+                  <Check className="text-primary size-5" />
+                ) : publishStatus?.status === "failed" ? (
+                  <AlertTriangle className="text-destructive size-5" />
+                ) : (
+                  <Loader2 className="text-primary size-5 animate-spin" />
+                )}
+              </div>
+              <div className="bg-border mt-4 h-2 overflow-hidden rounded">
+                <div
+                  className="bg-primary h-full transition-all"
+                  style={{ width: `${publishStatus?.progress ?? 0}%` }}
+                />
+              </div>
+              {publishStatus?.error ? (
+                <div className="text-destructive mt-3 text-sm">
+                  {publishStatus.error}
+                </div>
+              ) : null}
+            </div>
+
+            {publishStatus?.status === "succeeded" &&
+            publishStatus.apiBasePath &&
+            publishStatus.apiToken ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-muted-foreground text-xs font-semibold tracking-[0.16em] uppercase">
+                    API base path
+                  </label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={publishStatus.apiBasePath} />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      onClick={() =>
+                        void copyPublishedValue(
+                          publishStatus.apiBasePath!,
+                          "API base path"
+                        )
+                      }
+                    >
+                      <Copy className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-muted-foreground text-xs font-semibold tracking-[0.16em] uppercase">
+                    API token
+                  </label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={publishStatus.apiToken} />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      onClick={() =>
+                        void copyPublishedValue(
+                          publishStatus.apiToken!,
+                          "API token"
+                        )
+                      }
+                    >
+                      <Copy className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPublishDialogOpen(false)}
+              disabled={isPublishing}
+            >
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </TooltipProvider>

@@ -13,6 +13,7 @@ import type {
   CanvasPoint,
   ParseError,
   ParsedSchema,
+  PublishedApi,
   PersistedScheme,
   SaveStatus,
   SchemaElementRef,
@@ -43,6 +44,7 @@ interface SchemaStore {
   groups: SchemaGroup[];
   selectedTableIds: string[];
   clipboardTableIds: string[];
+  publishedApi: PublishedApi | null;
   initializePersistence: () => void;
   saveCurrentScheme: () => Promise<void>;
   createScheme: (name: string, starter?: SchemaPreset) => void;
@@ -71,6 +73,7 @@ interface SchemaStore {
   setSearchQuery: (query: string) => void;
   setAiPrompt: (prompt: string) => void;
   generateFromPrompt: () => Promise<void>;
+  setPublishedApi: (publishedApi: PublishedApi | null) => void;
 }
 
 function parse(code: string, format: SchemaFormat) {
@@ -194,6 +197,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   groups: [],
   selectedTableIds: [],
   clipboardTableIds: [],
+  publishedApi: null,
   initializePersistence: () => {
     if (get().storageHydrated) {
       return;
@@ -549,5 +553,6 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
         ]
       });
     }
-  }
+  },
+  setPublishedApi: (publishedApi) => set({ publishedApi })
 }));

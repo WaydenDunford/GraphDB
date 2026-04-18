@@ -135,7 +135,11 @@ function primaryWhere(table: SchemaTable) {
   return objectFromColumns(whereColumns);
 }
 
-function buildEndpoint(table: SchemaTable, action: CrudAction): ApiEndpoint {
+function buildEndpointForBase(
+  table: SchemaTable,
+  action: CrudAction,
+  apiBasePath: string
+): ApiEndpoint {
   const model = pathSegment(table.name) || table.id;
   const key = routeKey(table);
   const writableColumns = table.columns.filter(
@@ -144,11 +148,13 @@ function buildEndpoint(table: SchemaTable, action: CrudAction): ApiEndpoint {
   const dataColumns =
     writableColumns.length > 0 ? writableColumns : table.columns;
   const detailPath = `/api/${model}/{${key}}`;
+  const normalizedBase = apiBasePath.replace(/\/+$/, "");
+  const publishedDetailPath = `${normalizedBase}/${model}/{${key}}`;
   const paths: Record<CrudAction, string> = {
-    create: `/api/${model}`,
-    read: `/api/${model}`,
-    update: detailPath,
-    delete: detailPath
+    create: `${normalizedBase}/${model}`,
+    read: `${normalizedBase}/${model}`,
+    update: apiBasePath === "/api" ? detailPath : publishedDetailPath,
+    delete: apiBasePath === "/api" ? detailPath : publishedDetailPath
   };
   const title = table.schema ? `${table.schema}.${table.name}` : table.name;
 
@@ -194,13 +200,13 @@ function buildEndpoint(table: SchemaTable, action: CrudAction): ApiEndpoint {
   };
 }
 
-function buildApiModels(tables: SchemaTable[]): ApiModel[] {
+function buildApiModels(tables: SchemaTable[], apiBasePath: string): ApiModel[] {
   return tables.map((table) => ({
     id: table.id,
     title: table.schema ? `${table.schema}.${table.name}` : table.name,
     table,
     endpoints: (["create", "read", "update", "delete"] as CrudAction[]).map(
-      (action) => buildEndpoint(table, action)
+      (action) => buildEndpointForBase(table, action, apiBasePath)
     )
   }));
 }
@@ -381,9 +387,11 @@ function ApiModelSection({
 
 export function ApiExplorer() {
   const schema = useSchemaStore((state) => state.schema);
+  const publishedApi = useSchemaStore((state) => state.publishedApi);
+  const apiBasePath = publishedApi?.apiBasePath ?? "/api";
   const apiModels = useMemo(
-    () => buildApiModels(schema.tables),
-    [schema.tables]
+    () => buildApiModels(schema.tables, apiBasePath),
+    [apiBasePath, schema.tables]
   );
   const defaultExpandedModelIds = useMemo(
     () => new Set(apiModels.map((model) => model.id)),
@@ -431,6 +439,14 @@ export function ApiExplorer() {
           </div>
         ) : (
           <div className="space-y-8">
+            {publishedApi ? (
+              <div className="mx-3 rounded border border-emerald-500/50 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-400/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+                <div className="font-semibold">Published API</div>
+                <div className="mt-1 font-mono text-xs">
+                  {publishedApi.apiBasePath}
+                </div>
+              </div>
+            ) : null}
             {apiModels.map((model) => (
               <ApiModelSection
                 key={model.id}
