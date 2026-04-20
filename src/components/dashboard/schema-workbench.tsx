@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ApiExplorer } from "@/components/dashboard/api-explorer";
 import { LeftWorkspacePanel } from "@/components/dashboard/left-workspace-panel";
-import { SchemePersistenceController } from "@/components/dashboard/scheme-persistence-controller";
+import { ProjectPersistenceController } from "@/components/dashboard/project-persistence-controller";
 import { TopNav, type WorkbenchView } from "@/components/dashboard/top-nav";
 import { SchemaCanvas } from "@/components/schema/schema-canvas";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ export function SchemaWorkbench() {
 
   return (
     <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden">
-      <SchemePersistenceController />
+      <ProjectPersistenceController />
       <TopNav activeView={activeView} onViewChange={handleViewChange} />
       <main
         className={cn(

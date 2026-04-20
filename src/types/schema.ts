@@ -116,7 +116,7 @@ export interface SchemaGroup {
   color: "emerald" | "cyan" | "amber" | "rose";
 }
 
-export interface PersistedScheme {
+export interface PersistedProject {
   id: string;
   name: string;
   code: string;

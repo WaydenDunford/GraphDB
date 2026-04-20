@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { useSchemaStore } from "@/lib/store/schema-store";
 
-export function SchemePersistenceController() {
+export function ProjectPersistenceController() {
   const storageHydrated = useSchemaStore((state) => state.storageHydrated);
   const saveStatus = useSchemaStore((state) => state.saveStatus);
   const code = useSchemaStore((state) => state.code);
   const format = useSchemaStore((state) => state.format);
-  const schemeName = useSchemaStore((state) => state.schemeName);
+  const projectName = useSchemaStore((state) => state.schemeName);
   const nodePositions = useSchemaStore((state) => state.nodePositions);
   const groups = useSchemaStore((state) => state.groups);
   const initializePersistence = useSchemaStore(
@@ -15,7 +15,7 @@ export function SchemePersistenceController() {
   const saveCurrentScheme = useSchemaStore((state) => state.saveCurrentScheme);
 
   useEffect(() => {
-    initializePersistence();
+    void initializePersistence();
   }, [initializePersistence]);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function SchemePersistenceController() {
     nodePositions,
     saveCurrentScheme,
     saveStatus,
-    schemeName,
+    projectName,
     storageHydrated
   ]);
 

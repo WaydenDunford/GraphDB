@@ -12,19 +12,19 @@ import {
   unqualifiedIdentifier
 } from "@/lib/parser/common";
 import {
-  getActiveSchemeId,
-  loadPersistedSchemes,
-  savePersistedSchemes,
-  setActiveSchemeId
-} from "@/lib/persistence/scheme-storage";
+  getActiveProjectId,
+  loadPersistedProjects,
+  savePersistedProjects,
+  setActiveProjectId
+} from "@/lib/persistence/project-storage";
 import { samplePresets, starterDbml } from "@/lib/samples";
 import type {
   CanvasBounds,
   CanvasPoint,
   ParseError,
   ParsedSchema,
+  PersistedProject,
   PublishedApi,
-  PersistedScheme,
   SaveStatus,
   SchemaCodeByFormat,
   SchemaCodeFormat,
@@ -53,7 +53,7 @@ interface UndoSnapshot {
 interface SchemaStore {
   currentSchemeId: string;
   schemeName: string;
-  savedSchemes: PersistedScheme[];
+  savedSchemes: PersistedProject[];
   saveStatus: SaveStatus;
   lastSavedAt: number | null;
   storageHydrated: boolean;
@@ -76,12 +76,12 @@ interface SchemaStore {
   clipboardTableIds: string[];
   undoStack: UndoSnapshot[];
   publishedApi: PublishedApi | null;
-  initializePersistence: () => void;
+  initializePersistence: () => Promise<void>;
   saveCurrentScheme: () => Promise<void>;
   createScheme: (name: string, starter?: SchemaPreset) => void;
   loadScheme: (schemeId: string) => void;
   deleteScheme: (schemeId: string) => void;
-  renameSavedScheme: (schemeId: string, name: string) => void;
+  renameSavedProject: (projectId: string, name: string) => void;
   setSchemeName: (name: string) => void;
   setCode: (code: string) => void;
   setFormat: (format: SchemaFormat) => void;
@@ -136,8 +136,8 @@ function parse(code: string, format: SchemaCodeFormat) {
   return parseSchema(code, format);
 }
 
-function schemeId() {
-  return `scheme:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+function projectId() {
+  return `project:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function arraysEqual(a: string[], b: string[]) {
@@ -383,17 +383,17 @@ function generatedStateFromTables(
   };
 }
 
-function toPersistedScheme(
+function toPersistedProject(
   state: SchemaStore,
   updatedAt = Date.now()
-): PersistedScheme {
+): PersistedProject {
   const existing = state.savedSchemes.find(
     (scheme) => scheme.id === state.currentSchemeId
   );
 
   return {
     id: state.currentSchemeId,
-    name: state.schemeName.trim() || "Untitled scheme",
+    name: state.schemeName.trim() || "Untitled project",
     code: state.code,
     format: state.format,
     codeFormat: state.codeFormat,
@@ -407,7 +407,7 @@ function toPersistedScheme(
   };
 }
 
-function applyScheme(scheme: PersistedScheme) {
+function applyScheme(scheme: PersistedProject) {
   const codeFormat =
     scheme.codeFormat ?? (isCodeFormat(scheme.format) ? scheme.format : "dbml");
   const code = scheme.codeByFormat?.[codeFormat] ?? scheme.code;
@@ -444,11 +444,11 @@ const initialResult = parse(starterDbml, "dbml");
 const initialCodeByFormat = generateSchemaCodeBundle(initialResult.schema, {
   dbml: starterDbml
 });
-const initialSchemeId = "scheme:local-default";
+const initialSchemeId = "project:local-default";
 
 export const useSchemaStore = create<SchemaStore>((set, get) => ({
   currentSchemeId: initialSchemeId,
-  schemeName: "Untitled production schema",
+  schemeName: "Untitled production project",
   savedSchemes: [],
   saveStatus: "dirty",
   lastSavedAt: null,
@@ -472,13 +472,13 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
   clipboardTableIds: [],
   undoStack: [],
   publishedApi: null,
-  initializePersistence: () => {
+  initializePersistence: async () => {
     if (get().storageHydrated) {
       return;
     }
 
-    const savedSchemes = loadPersistedSchemes();
-    const activeSchemeId = getActiveSchemeId();
+    const savedSchemes = await loadPersistedProjects();
+    const activeSchemeId = getActiveProjectId();
     const activeScheme =
       savedSchemes.find((scheme) => scheme.id === activeSchemeId) ??
       savedSchemes[0];
@@ -503,14 +503,14 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
     try {
       const state = get();
-      const persisted = toPersistedScheme(state);
+      const persisted = toPersistedProject(state);
       const savedSchemes = [
         persisted,
         ...state.savedSchemes.filter((scheme) => scheme.id !== persisted.id)
       ].sort((a, b) => b.updatedAt - a.updatedAt);
 
-      savePersistedSchemes(savedSchemes);
-      setActiveSchemeId(persisted.id);
+      await savePersistedProjects(savedSchemes);
+      setActiveProjectId(persisted.id);
       set({
         savedSchemes,
         saveStatus: "saved",
@@ -521,7 +521,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     }
   },
   createScheme: (name, starter = samplePresets[0]) => {
-    const nextId = schemeId();
+    const nextId = projectId();
     const result = parse(starter.code, starter.format);
     const codeByFormat = generateSchemaCodeBundle(result.schema, {
       [starter.format]: starter.code
@@ -529,7 +529,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
     set({
       currentSchemeId: nextId,
-      schemeName: name.trim() || "Untitled scheme",
+      schemeName: name.trim() || "Untitled project",
       code: starter.code,
       format: starter.format,
       codeFormat: starter.format,
@@ -545,7 +545,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
       undoStack: [],
       saveStatus: "dirty"
     });
-    setActiveSchemeId(nextId);
+    setActiveProjectId(nextId);
   },
   loadScheme: (schemeIdToLoad) => {
     const scheme = get().savedSchemes.find(
@@ -557,19 +557,19 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
     }
 
     set(applyScheme(scheme));
-    setActiveSchemeId(scheme.id);
+    setActiveProjectId(scheme.id);
   },
   deleteScheme: (schemeIdToDelete) => {
     const savedSchemes = get().savedSchemes.filter(
       (scheme) => scheme.id !== schemeIdToDelete
     );
-    savePersistedSchemes(savedSchemes);
+    void savePersistedProjects(savedSchemes).catch(() => undefined);
 
     if (get().currentSchemeId === schemeIdToDelete) {
       const nextScheme = savedSchemes[0];
       if (nextScheme) {
         set({ ...applyScheme(nextScheme), savedSchemes });
-        setActiveSchemeId(nextScheme.id);
+        setActiveProjectId(nextScheme.id);
       } else {
         const result = parse(starterDbml, "dbml");
         const codeByFormat = generateSchemaCodeBundle(result.schema, {
@@ -577,7 +577,7 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
         });
         set({
           currentSchemeId: initialSchemeId,
-          schemeName: "Untitled production schema",
+          schemeName: "Untitled production project",
           code: starterDbml,
           format: "dbml",
           codeFormat: "dbml",
@@ -597,21 +597,21 @@ export const useSchemaStore = create<SchemaStore>((set, get) => ({
 
     set({ savedSchemes });
   },
-  renameSavedScheme: (schemeIdToRename, name) => {
+  renameSavedProject: (projectIdToRename, name) => {
     const cleaned = name.trim();
     if (!cleaned) {
       return;
     }
 
     const savedSchemes = get().savedSchemes.map((scheme) =>
-      scheme.id === schemeIdToRename
+      scheme.id === projectIdToRename
         ? { ...scheme, name: cleaned, updatedAt: Date.now() }
         : scheme
     );
-    savePersistedSchemes(savedSchemes);
+    void savePersistedProjects(savedSchemes).catch(() => undefined);
     set((state) => ({
       savedSchemes,
-      ...(state.currentSchemeId === schemeIdToRename
+      ...(state.currentSchemeId === projectIdToRename
         ? { schemeName: cleaned, saveStatus: "saved" as SaveStatus }
         : {})
     }));

@@ -148,7 +148,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
 
   const commitName = () => {
     const cleaned = draftName.trim();
-    setSchemeName(cleaned || "Untitled scheme");
+    setSchemeName(cleaned || "Untitled project");
     setIsEditingName(false);
   };
 
@@ -260,7 +260,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
 
     try {
       const started = await startPublish({
-        schemeName,
+        projectName: schemeName,
         format: codeFormat,
         code,
         schema
@@ -307,7 +307,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
   const handleCreateScheme = async () => {
     const cleaned = newSchemeName.trim();
     if (!cleaned) {
-      toast.error("Scheme name is required.");
+      toast.error("Project name is required.");
       return;
     }
 
@@ -363,7 +363,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
                 <button
                   className="text-foreground hover:text-primary min-w-0 truncate text-left text-sm font-medium transition-colors dark:text-white"
                   onClick={beginNameEdit}
-                  title="Rename scheme"
+                  title="Rename project"
                 >
                   {schemeName}
                 </button>
@@ -372,7 +372,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
                 <button
                   className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={beginNameEdit}
-                  aria-label="Edit scheme name"
+                  aria-label="Edit project name"
                 >
                   <Pencil className="size-3.5" />
                 </button>
@@ -415,12 +415,12 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
                   variant="ghost"
                   size="icon"
                   onClick={() => setNewSchemeOpen(true)}
-                  aria-label="New scheme"
+                  aria-label="New project"
                 >
                   <FilePlus2 className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>New scheme</TooltipContent>
+              <TooltipContent>New project</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -429,12 +429,12 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
                   variant="ghost"
                   size="icon"
                   onClick={() => setLoadSchemesOpen(true)}
-                  aria-label="Load schemes"
+                  aria-label="Load projects"
                 >
                   <FolderOpen className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Load schemes</TooltipContent>
+              <TooltipContent>Load projects</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -604,9 +604,9 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
       <Dialog open={newSchemeOpen} onOpenChange={setNewSchemeOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New scheme</DialogTitle>
+            <DialogTitle>New project</DialogTitle>
             <DialogDescription>
-              Create a fresh workspace with a starter schema.
+              Create a fresh project with a starter schema.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -661,20 +661,20 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
       <Dialog open={loadSchemesOpen} onOpenChange={setLoadSchemesOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Load schemes</DialogTitle>
+            <DialogTitle>Load project</DialogTitle>
             <DialogDescription>
-              Open a locally saved schema workspace.
+              Open a saved project.
             </DialogDescription>
           </DialogHeader>
           <Input
             value={schemeSearch}
             onChange={(event) => setSchemeSearch(event.target.value)}
-            placeholder="Search saved schemes"
+            placeholder="Search saved projects"
           />
           <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
             {filteredSchemes.length === 0 ? (
               <div className="border-border text-muted-foreground rounded-md border p-6 text-center text-sm">
-                No saved schemes found.
+                No saved projects found.
               </div>
             ) : (
               filteredSchemes.map((scheme) => (
@@ -711,7 +711,7 @@ export function TopNav({ activeView, onViewChange }: TopNavProps) {
                       variant="ghost"
                       onClick={() => {
                         deleteScheme(scheme.id);
-                        toast.success("Scheme deleted.");
+                        toast.success("Project deleted.");
                       }}
                       aria-label={`Delete ${scheme.name}`}
                     >

@@ -32,7 +32,7 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export interface StartPublishPayload {
-  schemeName: string;
+  projectName: string;
   format: SchemaCodeFormat;
   code: string;
   schema: ParsedSchema;
